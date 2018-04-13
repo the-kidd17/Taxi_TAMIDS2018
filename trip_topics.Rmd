@@ -1,0 +1,37 @@
+---
+title: "Topic Modeling Trips"
+output: html_notebook
+---
+
+```{r, message = FALSE}
+library(data.table)
+library(text2vec)
+```
+
+## Weekly Community Area patterns
+
+```{r}
+set.seed(1)
+
+comm_area <- fread("Weekly_CommArea")
+comm_area <- setDT(comm_area)
+comm_area[, id := paste(year, week, sep = "-")]
+comm_area[, trip := paste(Pickup.Community.Area, Dropoff.Community.Area, sep = "-")]
+setkey(comm_area, id)
+
+comm_area_it <- itoken(iterable = comm_area$trip, ids = comm_area$id)
+comm_area_v <- create_vocabulary(comm_area_it)
+comm_area_dtm <- create_dtm(comm_area_it, vocab_vectorizer(comm_area_v), "dgTMatrix")
+```
+
+```{r}
+ca_lda <- LDA$new(n_topics = 10, 
+                  doc_topic_prior = 0.1,
+                  topic_word_prior = 0.01)
+ca_doc_topic_distr <- ca_lda$fit_transform(x = comm_area_dtm, n_iter = 1000,
+                                  convergence_tol = 0.001, 
+                                  n_check_convergence = 25)
+
+foo <- ca_lda$topic_word_distribution
+ca_lda$get_top_words(n = 20, lambda = .3)
+```
